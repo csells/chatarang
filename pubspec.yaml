@@ -8,6 +8,7 @@ environment:
 
 dependencies:
   google_generative_ai: ^0.4.7
+  dartantic_ai: ^0.8.3
   # path: ^1.8.0
 
 dev_dependencies:

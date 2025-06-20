@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:dartantic_ai/dartantic_ai.dart';
 
 Future<void> main() async {
   final apiKey = Platform.environment['GEMINI_API_KEY'];
@@ -9,126 +9,113 @@ Future<void> main() async {
     exit(1);
   }
 
-  final model = GenerativeModel(
-    model: 'gemini-2.5-flash',
-    apiKey: apiKey,
-    tools: [
-      Tool(
-        functionDeclarations: [
-          FunctionDeclaration(
-            'read_file',
-            'Read the contents of a file at a relative path.',
-            Schema(
-              SchemaType.object,
-              properties: {'path': Schema(SchemaType.string)},
-            ),
-          ),
-          FunctionDeclaration(
-            'list_files',
-            'List all files in a given directory.',
-            Schema(
-              SchemaType.object,
-              properties: {'dir': Schema(SchemaType.string)},
-            ),
-          ),
-          FunctionDeclaration(
-            'edit_file',
-            'Overwrite the contents of a file with new content.',
-            Schema(
-              SchemaType.object,
-              properties: {
-                'path': Schema(SchemaType.string),
-                'replace': Schema(SchemaType.string),
-              },
-            ),
-          ),
-        ],
-      ),
-    ],
+  // Create tools for file operations
+  final readFileTool = Tool(
+    name: 'read_file',
+    description: 'Read the contents of a file at a relative path.',
+    onCall: readFile,
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'path': {'type': 'string'},
+      },
+      'required': ['path'],
+    }.toSchema(),
   );
 
-  final chat = model.startChat();
+  final listFilesTool = Tool(
+    name: 'list_files',
+    description: 'List all files in a given directory.',
+    onCall: listFiles,
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'dir': {'type': 'string'},
+      },
+    }.toSchema(),
+  );
 
-  print('Gemini 2.0 Flash Agent is running. Type "exit" to quit.');
+  final editFileTool = Tool(
+    name: 'edit_file',
+    description: 'Overwrite the contents of a file with new content.',
+    onCall: editFile,
+    inputSchema: {
+      'type': 'object',
+      'properties': {
+        'path': {'type': 'string'},
+        'replace': {'type': 'string'},
+      },
+      'required': ['path', 'replace'],
+    }.toSchema(),
+  );
+
+  // Create agent with tools
+  final agent = Agent(
+    'google:gemini-2.5-flash',
+    apiKey: apiKey,
+    tools: [readFileTool, listFilesTool, editFileTool],
+  );
+
+  print('Chatarang Agent is running. Type "exit" to quit.');
+
+  // Keep track of chat history
+  var messages = <Message>[];
+
   while (true) {
     stdout.write('\x1B[94mYou\x1B[0m: ');
     final input = stdin.readLineSync();
     if (input == null || input.toLowerCase() == 'exit') break;
 
-    final response = await chat.sendMessage(Content.text(input));
+    try {
+      // Use streaming to show responses in real-time
+      final stream = agent.runStream(input, messages: messages);
 
-    final text = response.text?.trim();
-    if (text != null && text.isNotEmpty) {
-      print('\x1B[93mGemini\x1B[0m: $text');
-    }
-
-    final functionResponses = <Content>[];
-    for (final candidate in response.candidates) {
-      for (final part in candidate.content.parts) {
-        if (part is FunctionCall) {
-          final result = await handleToolCall(part);
-          print('\x1B[92mTool\x1B[0m: ${part.name}(${part.args})');
-          functionResponses.add(
-            Content.functionResponse(part.name, {'result': result}),
-          );
-        }
+      stdout.write('\x1B[93mAgent\x1B[0m: ');
+      await for (final response in stream) {
+        stdout.write(response.output);
+        // Update messages for the next interaction
+        messages = response.messages;
       }
-    }
-
-    if (functionResponses.isNotEmpty) {
-      final response = await chat.sendMessage(
-        Content(
-          '',
-          functionResponses.map((c) => c.parts).expand((p) => p).toList(),
-        ),
-      );
-      if (response.text != null) {
-        print('\x1B[93mGemini\x1B[0m: ${response.text}');
-      }
+      stdout.write('\n');
+    } catch (e) {
+      print('\x1B[91mError\x1B[0m: $e');
     }
   }
 }
 
-Future<String> handleToolCall(FunctionCall call) async {
-  final args = call.args;
+Future<Map<String, dynamic>> readFile(Map<String, dynamic> args) async {
+  final path = args['path'] as String;
   try {
-    switch (call.name) {
-      case 'read_file':
-        return await readFile(args['path'] as String);
-      case 'list_files':
-        return await listFiles(args['dir'] as String? ?? '.');
-      case 'edit_file':
-        return await editFile(
-          args['path'] as String,
-          args['replace'] as String,
-        );
-      default:
-        final err = 'Unknown tool: ${call.name}';
-        print(err);
-        return err;
-    }
+    final file = File(path);
+    if (!await file.exists()) return {'result': 'File not found: $path'};
+    final content = await file.readAsString();
+    return {'result': content};
   } catch (e) {
-    final err = 'Error executing ${call.name}: $e';
-    print(err);
-    return err;
+    return {'result': 'Error reading file: $e'};
   }
 }
 
-Future<String> readFile(String path) async {
-  final file = File(path);
-  if (!await file.exists()) return 'File not found: $path';
-  return await file.readAsString();
+Future<Map<String, dynamic>> listFiles(Map<String, dynamic> args) async {
+  final dirPath = args['dir'] as String? ?? '.';
+  try {
+    final dir = Directory(dirPath);
+    if (!await dir.exists()) return {'result': 'Directory not found: $dirPath'};
+    final entries = await dir.list().toList();
+    final paths = entries.map((e) => e.path).join('\n');
+    return {'result': paths};
+  } catch (e) {
+    return {'result': 'Error listing files: $e'};
+  }
 }
 
-Future<String> listFiles(String dirPath) async {
-  final dir = Directory(dirPath);
-  if (!await dir.exists()) return 'Directory not found: $dirPath';
-  final entries = await dir.list().toList();
-  return entries.map((e) => e.path).join('\n');
-}
-
-Future<String> editFile(String path, String content) async {
-  final file = File(path);
-  await file.writeAsString(content);
-  return 'File $path updated successfully.';
+Future<Map<String, dynamic>> editFile(Map<String, dynamic> args) async {
+  final path = args['path'] as String;
+  final content = args['replace'] as String;
+  try {
+    final file = File(path);
+    await file.writeAsString(content);
+    return {'result': 'File $path updated successfully.'};
+  } catch (e) {
+    return {'result': 'Error editing file: $e'};
+  }
 }
