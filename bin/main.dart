@@ -76,7 +76,7 @@ chatarang is now running.
           continue;
         case '/model':
           if (args.isEmpty) {
-            print('Current model: $model');
+            print('Current model: ${agent.model}');
           } else {
             final newModel = args.join(':');
             if (models.contains(newModel)) {
