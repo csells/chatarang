@@ -37,7 +37,7 @@ Future<void> main() async {
 chatarang is now running.
   type /exit to... ummm... exit.
   also /quit works
-  /model <model> to change the model
+  /model [model] to see or change the model
   /list [filter] to show available models
   /help to show this message again
 ''';
@@ -45,19 +45,59 @@ chatarang is now running.
   print(help);
 
   // things to track
-  const model = defaultModel;
   var messages = <Message>[];
-  final agent = Agent(model, apiKey: apiKeyFrom(model));
+  var agent = Agent(defaultModel, apiKey: apiKeyFrom(defaultModel));
 
   while (true) {
     stdout.write('\x1B[94mYou\x1B[0m: ');
     final input = stdin.readLineSync();
-    if (input == null || input.toLowerCase() == 'exit') break;
+    if (input == null) break;
+
+    final line = input.trim();
+    if (line.isEmpty) continue;
+
+    if (line.startsWith('/')) {
+      final parts = line.split(' ');
+      final command = parts.first.toLowerCase();
+      final args = parts.sublist(1);
+
+      if (command == '/exit' || command == '/quit') {
+        break;
+      }
+
+      switch (command) {
+        case '/help':
+          print(help);
+          continue;
+        case '/list':
+          models
+              .where((m) => args.every((arg) => m.contains(arg)))
+              .forEach(print);
+          continue;
+        case '/model':
+          if (args.isEmpty) {
+            print('Current model: $model');
+          } else {
+            final newModel = args.join(':');
+            if (models.contains(newModel)) {
+              agent = Agent(newModel, apiKey: apiKeyFrom(newModel));
+              messages = [];
+              print('Model set to: $newModel');
+            } else {
+              print('Unknown model: $newModel. Use /list to see models.');
+            }
+          }
+          continue;
+        default:
+          print('Unknown command: $command');
+          continue;
+      }
+    }
 
     // Use streaming to show responses in real-time
-    final stream = agent.runStream(input, messages: messages);
+    final stream = agent.runStream(line, messages: messages);
 
-    stdout.write('\x1B[93mAgent\x1B[0m: ');
+    stdout.write('\x1B[93m${agent.model}\x1B[0m: ');
     await for (final response in stream) {
       stdout.write(response.output);
       // Update messages for the next interaction
@@ -65,4 +105,6 @@ chatarang is now running.
     }
     stdout.write('\n');
   }
+
+  exit(0);
 }
