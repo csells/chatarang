@@ -45,6 +45,7 @@ chatarang is now running.
   also /quit works
   /model [model] to see or change the model
   /list [filter] to show available models
+  /messages to show conversation history
   /help to show this message again
 ''';
 
@@ -52,6 +53,7 @@ chatarang is now running.
 
   // things to track
   var messages = <Message>[];
+  final messageModels = <String>[];
   var agent = Agent(defaultModel, apiKey: apiKeyFrom(defaultModel));
 
   while (true) {
@@ -79,6 +81,25 @@ chatarang is now running.
           models
               .where((m) => args.every((arg) => m.contains(arg)))
               .forEach(print);
+          continue;
+        case '/messages':
+          if (messages.isEmpty) {
+            print('No messages yet.');
+          } else {
+            var modelMessageIndex = 0;
+            for (final message in messages) {
+              final role = message.role.name;
+              if (role == 'user') {
+                print('\x1B[94mYou\x1B[0m: ${message.text}');
+              } else {
+                // should be 'model'
+                final modelName = modelMessageIndex < messageModels.length
+                    ? messageModels[modelMessageIndex++]
+                    : agent.model;
+                print('\x1B[93m$modelName\x1B[0m: ${message.text}');
+              }
+            }
+          }
           continue;
         case '/model':
           if (args.isEmpty) {
@@ -112,6 +133,9 @@ chatarang is now running.
       // Update messages for the next interaction
       messages = response.messages;
     }
+
+    messageModels.add(agent.model);
+
     stdout.write('\n');
   }
 
