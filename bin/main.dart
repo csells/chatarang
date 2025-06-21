@@ -13,13 +13,16 @@ Future<void> main() async {
   final openAiApiKey = env['OPENAI_API_KEY']!;
   final openRouterApiKey = env['OPENROUTER_API_KEY']!;
 
-  String apiKeyFrom(String model) => switch (model.split('/:').first) {
-    'gemini' => googleApiKey,
-    'openai' => openAiApiKey,
-    'openrouter' => openRouterApiKey,
-    'gemini-compat' => googleApiKey,
-    _ => throw Exception('Invalid model: $model'),
-  };
+  String apiKeyFrom(String model) {
+    final provider = model.split(RegExp('[/:]')).first;
+    return switch (provider) {
+      'google' => googleApiKey,
+      'openai' => openAiApiKey,
+      'openrouter' => openRouterApiKey,
+      'gemini-compat' => googleApiKey,
+      _ => throw Exception('Invalid provider: $provider'),
+    };
+  }
 
   final models = [
     for (final providerName in [
@@ -28,7 +31,10 @@ Future<void> main() async {
       'openrouter',
       'gemini-compat',
     ])
-      ...(await Agent.providerFor(providerName).listModels())
+      ...(await Agent.providerFor(
+            providerName,
+            apiKey: apiKeyFrom(providerName),
+          ).listModels())
           .where((m) => m.stable)
           .map((m) => '$providerName:${m.name}'),
   ];
@@ -80,9 +86,12 @@ chatarang is now running.
           } else {
             final newModel = args.join(':');
             if (models.contains(newModel)) {
-              agent = Agent(newModel, apiKey: apiKeyFrom(newModel));
-              messages = [];
-              print('Model set to: $newModel');
+              try {
+                agent = Agent(newModel, apiKey: apiKeyFrom(newModel));
+                print('Model set to: $newModel');
+              } on Exception catch (ex) {
+                print('Error setting model: $ex');
+              }
             } else {
               print('Unknown model: $newModel. Use /list to see models.');
             }
