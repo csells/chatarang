@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:http/http.dart' as http;
-import 'package:osm_nominatim/osm_nominatim.dart';
 
 final tools = [
   Tool(
@@ -55,39 +54,21 @@ final tools = [
     onCall: (input) async {
       final location = input['location'];
       try {
-        final searchResults = await Nominatim.searchByName(
-          query: location,
-          addressDetails: true,
-          extraTags: true,
-          nameDetails: true,
-        );
+        final uri = Uri.https('nominatim.openstreetmap.org', '/search', {
+          'q': location,
+          'format': 'jsonv2',
+          'addressdetails': '1',
+          'extratags': '1',
+          'namedetails': '1',
+        });
+        final response = await http.get(uri);
+        final searchResults = json.decode(response.body) as List<dynamic>;
 
         if (searchResults.isEmpty) {
           return {'error': 'Could not find a location for $location'};
         }
 
-        final places = searchResults
-            .map(
-              (place) => {
-                'placeId': place.placeId,
-                'osmType': place.osmType,
-                'osmId': place.osmId,
-                'boundingBox': place.boundingBox,
-                'lat': place.lat,
-                'lon': place.lon,
-                'displayName': place.displayName,
-                'placeRank': place.placeRank,
-                'category': place.category,
-                'type': place.type,
-                'importance': place.importance,
-                'icon': place.icon,
-                'address': place.address,
-                'extraTags': place.extraTags,
-                'nameDetails': place.nameDetails,
-              },
-            )
-            .toList();
-        return {'result': places};
+        return {'result': searchResults};
       } on Exception catch (e) {
         return {'error': 'Could not find a location for $location: $e'};
       }
