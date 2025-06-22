@@ -30,7 +30,7 @@ final tools = [
     }.toSchema(),
     onCall: (input) async {
       final zipcode = input['zipcode'];
-      final url = Uri.parse('https://wttr.in/$zipcode?format=j1');
+      final url = Uri.parse('https://wttr.in/US~$zipcode?format=j1');
       final response = await http.get(url);
       if (response.statusCode != 200) {
         return {'error': 'Error getting weather: ${response.body}'};
