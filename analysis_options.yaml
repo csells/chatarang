@@ -16,6 +16,7 @@ analyzer:
     cascade_invocations: ignore
     document_ignores: ignore
     included_file_warning: ignore
+    public_member_api_docs: ignore
     specify_nonobvious_local_variable_types: ignore
 
 linter:
