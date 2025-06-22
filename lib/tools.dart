@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
+import 'package:osm_nominatim/osm_nominatim.dart';
 
 final tools = [
   Tool(
@@ -40,14 +40,14 @@ final tools = [
     },
   ),
   Tool(
-    name: 'location-to-zipcode',
-    description: 'Get the zipcode for a location',
+    name: 'location-lookup',
+    description: 'Get location data for a given search query.',
     inputSchema: {
       'type': 'object',
       'properties': {
         'location': {
           'type': 'string',
-          'description': 'The location to get the zipcode for.',
+          'description': 'The location to get the data for.',
         },
       },
       'required': ['location'],
@@ -55,21 +55,41 @@ final tools = [
     onCall: (input) async {
       final location = input['location'];
       try {
-        final locations = await locationFromAddress(location);
-        if (locations.isEmpty) {
-          return {'error': 'Could not find a zipcode for $location'};
-        }
-        // just get the first one
-        final placemarks = await placemarkFromCoordinates(
-          locations.first.latitude,
-          locations.first.longitude,
+        final searchResults = await Nominatim.searchByName(
+          query: location,
+          addressDetails: true,
+          extraTags: true,
+          nameDetails: true,
         );
-        if (placemarks.isEmpty) {
-          return {'error': 'Could not find a zipcode for $location'};
+
+        if (searchResults.isEmpty) {
+          return {'error': 'Could not find a location for $location'};
         }
-        return {'result': placemarks.first.postalCode};
-      } on NoResultFoundException {
-        return {'error': 'Could not find a zipcode for $location'};
+
+        final places = searchResults
+            .map(
+              (place) => {
+                'placeId': place.placeId,
+                'osmType': place.osmType,
+                'osmId': place.osmId,
+                'boundingBox': place.boundingBox,
+                'lat': place.lat,
+                'lon': place.lon,
+                'displayName': place.displayName,
+                'placeRank': place.placeRank,
+                'category': place.category,
+                'type': place.type,
+                'importance': place.importance,
+                'icon': place.icon,
+                'address': place.address,
+                'extraTags': place.extraTags,
+                'nameDetails': place.nameDetails,
+              },
+            )
+            .toList();
+        return {'result': places};
+      } on Exception catch (e) {
+        return {'error': 'Could not find a location for $location: $e'};
       }
     },
   ),
