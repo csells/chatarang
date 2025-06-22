@@ -23,17 +23,13 @@ Future<void> main() async {
       'openai' => openAiApiKey,
       'openrouter' => openRouterApiKey,
       'gemini-compat' => googleApiKey,
-      _ => throw Exception('Invalid provider: $provider'),
+      _ => throw Exception('Unknown provider: $provider'),
     };
   }
 
+  final providerNames = Agent.providers.keys;
   final models = [
-    for (final providerName in [
-      'google',
-      'openai',
-      'openrouter',
-      'gemini-compat',
-    ])
+    for (final providerName in providerNames)
       ...(await Agent.providerFor(
             providerName,
             apiKey: apiKeyFrom(providerName),
@@ -55,6 +51,9 @@ Everything else you type will be sent to the current model.
 ''';
 
   print(help);
+  print(
+    'Found ${models.length} models from ${providerNames.length} providers.',
+  );
 
   final commandHandler = CommandHandler(
     agent: Agent(defaultModel, apiKey: apiKeyFrom(defaultModel), tools: tools),

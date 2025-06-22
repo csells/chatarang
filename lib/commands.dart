@@ -48,9 +48,17 @@ class CommandHandler {
         return HandleCommandResult();
 
       case '/models':
-        models
+        final filteredModels = models
             .where((m) => args.every((arg) => m.contains(arg)))
-            .forEach(print);
+            .toList();
+        filteredModels.forEach(print);
+        if (args.isNotEmpty) {
+          print(
+            '\nFound ${filteredModels.length} models matching your filter.',
+          );
+        } else {
+          print('\nFound ${models.length} models.');
+        }
         return HandleCommandResult();
 
       case '/messages':

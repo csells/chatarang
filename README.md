@@ -50,6 +50,7 @@ google:gemini-2.0-flash: Okay, Chris. How can I help you today?
 
 You: /model openai:gpt-4o
 Model set to: openai:gpt-4o
+
 You: say my name
 openai:gpt-4o: Your name is Chris. How can I assist you further?
 ```

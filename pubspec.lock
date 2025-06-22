@@ -93,10 +93,10 @@ packages:
     dependency: "direct main"
     description:
       name: dartantic_ai
-      sha256: d630037cfc86915d8ca0f01604d097acad05238f6731cc8d34d9029c94719c18
+      sha256: "45aa4ab5180eb2b26319db9ab8fd6cdb1aa211372ebd7d13a058d0eee4543bbc"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.0"
+    version: "0.9.1"
   dotenv:
     dependency: "direct main"
     description:
