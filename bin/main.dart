@@ -3,6 +3,7 @@
 import 'dart:io';
 
 import 'package:chatarang/commands.dart';
+import 'package:chatarang/history.dart';
 import 'package:chatarang/tools.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
 import 'package:dotenv/dotenv.dart';
@@ -57,8 +58,7 @@ Everything else you type will be sent to the current model.
 
   final commandHandler = CommandHandler(
     agent: Agent(defaultModel, apiKey: apiKeyFrom(defaultModel), tools: tools),
-    messages: [],
-    messageModels: [],
+    history: [],
     models: models,
     help: help,
     apiKeyFrom: apiKeyFrom,
@@ -76,10 +76,6 @@ Everything else you type will be sent to the current model.
     if (result.shouldExit) break;
     if (result.commandHandled) continue;
 
-    final oldModelMessageCount = commandHandler.messages
-        .where((m) => m.role == MessageRole.model)
-        .length;
-
     // Use streaming to show responses in real-time
     final stream = commandHandler.agent.runStream(
       line,
@@ -87,19 +83,23 @@ Everything else you type will be sent to the current model.
     );
 
     stdout.write('\x1B[93m${commandHandler.agent.model}\x1B[0m: ');
+    var finalMessages = <Message>[];
     await for (final response in stream) {
       stdout.write(response.output);
-      // Update messages for the next interaction
-      commandHandler.messages = response.messages;
+      finalMessages = response.messages;
     }
 
-    final newModelMessageCount = commandHandler.messages
-        .where((m) => m.role == MessageRole.model)
-        .length;
-    if (newModelMessageCount > oldModelMessageCount) {
-      for (var i = 0; i < newModelMessageCount - oldModelMessageCount; i++) {
-        commandHandler.messageModels.add(commandHandler.agent.model);
-      }
+    final oldMessageCount = commandHandler.history.length;
+    final newMessages = finalMessages.sublist(oldMessageCount);
+    for (final msg in newMessages) {
+      commandHandler.history.add(
+        HistoryEntry(
+          message: msg,
+          modelName: msg.role == MessageRole.model
+              ? commandHandler.agent.model
+              : '',
+        ),
+      );
     }
 
     stdout.write('\n');

@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:dartantic_ai/dartantic_ai.dart';
 
+import 'history.dart';
 import 'tools.dart';
 
 class HandleCommandResult {
@@ -15,18 +16,18 @@ class HandleCommandResult {
 class CommandHandler {
   CommandHandler({
     required this.agent,
-    required this.messages,
-    required this.messageModels,
+    required this.history,
     required this.models,
     required this.help,
     required this.apiKeyFrom,
   });
   Agent agent;
-  List<Message> messages;
-  List<String> messageModels;
+  List<HistoryEntry> history;
   final List<String> models;
   final String help;
   final String Function(String) apiKeyFrom;
+
+  List<Message> get messages => history.map((e) => e.message).toList();
 
   HandleCommandResult handleCommand({required String line}) {
     if (!line.startsWith('/')) {
@@ -54,11 +55,11 @@ class CommandHandler {
 
       case '/messages':
         print('');
-        if (messages.isEmpty) {
+        if (history.isEmpty) {
           print('No messages yet.');
         } else {
-          var modelMessageIndex = 0;
-          for (final message in messages) {
+          for (final entry in history) {
+            final message = entry.message;
             final role = message.role;
             switch (role) {
               case MessageRole.user:
@@ -89,9 +90,7 @@ class CommandHandler {
                   }
                 }
               case MessageRole.model:
-                final modelName = modelMessageIndex < messageModels.length
-                    ? messageModels[modelMessageIndex++]
-                    : agent.model;
+                final modelName = entry.modelName;
                 for (final part in message.parts) {
                   if (part is TextPart) {
                     print('\x1B[93m$modelName\x1B[0m: ${part.text}');
@@ -101,21 +100,6 @@ class CommandHandler {
                         '  ',
                       ).convert(part.arguments);
                       print('\x1B[95mTool.call\x1B[0m: ${part.name}($args)');
-                    } else {
-                      // result
-                      final result = const JsonEncoder.withIndent(
-                        '  ',
-                      ).convert(part.result);
-
-                      var resultToShow = result;
-                      if (resultToShow.length > 256) {
-                        resultToShow = '${resultToShow.substring(0, 256)}...';
-                      }
-
-                      print(
-                        '\x1B[96mTool.result\x1B[0m: ${part.name}: '
-                        '$resultToShow',
-                      );
                     }
                   }
                 }
