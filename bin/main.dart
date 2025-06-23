@@ -6,6 +6,7 @@ import 'package:chatarang/commands.dart';
 import 'package:chatarang/env.dart';
 import 'package:chatarang/history.dart';
 import 'package:chatarang/tools.dart';
+import 'package:cli_repl/cli_repl.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
 
 const defaultModel = 'google';
@@ -44,21 +45,18 @@ Everything else you type will be sent to the current model.
     help: help,
   );
 
-  while (true) {
-    stdout.write('\x1B[94mYou\x1B[0m: ');
-    final input = stdin.readLineSync();
-    if (input == null) break;
+  final repl = Repl(prompt: '\x1B[94mYou\x1B[0m: ');
 
-    final line = input.trim();
-    if (line.isEmpty) continue;
+  for (final line in repl.run()) {
+    if (line.trim().isEmpty) continue;
 
-    final result = commandHandler.handleCommand(line: line);
+    final result = commandHandler.handleCommand(line: line.trim());
     if (result.shouldExit) break;
     if (result.commandHandled) continue;
 
     // Use streaming to show responses in real-time
     final stream = commandHandler.agent.runStream(
-      line,
+      line.trim(),
       messages: commandHandler.messages,
     );
 
@@ -82,7 +80,7 @@ Everything else you type will be sent to the current model.
       );
     }
 
-    stdout.write('\n');
+    print('');
   }
 
   exit(0);
