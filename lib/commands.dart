@@ -19,13 +19,12 @@ class CommandHandler {
     required this.history,
     required this.models,
     required this.help,
-    required this.apiKeyFrom,
   });
+
   Agent agent;
   List<HistoryEntry> history;
   final List<String> models;
   final String help;
-  final String Function(String) apiKeyFrom;
 
   List<Message> get messages => history.map((e) => e.message).toList();
 
@@ -129,11 +128,7 @@ class CommandHandler {
           final newModel = args.join(':');
           if (models.contains(newModel)) {
             try {
-              agent = Agent(
-                newModel,
-                apiKey: apiKeyFrom(newModel),
-                tools: tools,
-              );
+              agent = Agent(newModel, tools: tools);
               print('Model set to: $newModel');
             } on Exception catch (ex) {
               print('Error setting model: $ex');

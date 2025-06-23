@@ -3,37 +3,19 @@
 import 'dart:io';
 
 import 'package:chatarang/commands.dart';
+import 'package:chatarang/env.dart';
 import 'package:chatarang/history.dart';
 import 'package:chatarang/tools.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
-import 'package:dotenv/dotenv.dart';
 
 const defaultModel = 'google';
 
 Future<void> main() async {
-  final env = DotEnv()..load();
-  final googleApiKey = env['GEMINI_API_KEY']!;
-  final openAiApiKey = env['OPENAI_API_KEY']!;
-  final openRouterApiKey = env['OPENROUTER_API_KEY']!;
-
-  String apiKeyFrom(String model) {
-    final provider = model.split(RegExp('[/:]')).first;
-    return switch (provider) {
-      'google' => googleApiKey,
-      'openai' => openAiApiKey,
-      'openrouter' => openRouterApiKey,
-      'gemini-compat' => googleApiKey,
-      _ => throw Exception('Unknown provider: $provider'),
-    };
-  }
-
+  Agent.environment.addAll(Env.tryAll);
   final providerNames = Agent.providers.keys;
   final models = [
     for (final providerName in providerNames)
-      ...(await Agent.providerFor(
-            providerName,
-            apiKey: apiKeyFrom(providerName),
-          ).listModels())
+      ...(await Agent.providerFor(providerName).listModels())
           .where((m) => m.stable)
           .map((m) => '$providerName:${m.name}'),
   ];
@@ -56,11 +38,10 @@ Everything else you type will be sent to the current model.
   );
 
   final commandHandler = CommandHandler(
-    agent: Agent(defaultModel, apiKey: apiKeyFrom(defaultModel), tools: tools),
+    agent: Agent(defaultModel, tools: tools),
     history: [],
     models: models,
     help: help,
-    apiKeyFrom: apiKeyFrom,
   );
 
   while (true) {

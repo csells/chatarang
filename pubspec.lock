@@ -93,18 +93,10 @@ packages:
     dependency: "direct main"
     description:
       name: dartantic_ai
-      sha256: "45aa4ab5180eb2b26319db9ab8fd6cdb1aa211372ebd7d13a058d0eee4543bbc"
+      sha256: "82a0735bc4d9fbbe8370088dac8c81c3f20c4103fe9a6ce2c7569b0398ef1e42"
       url: "https://pub.dev"
     source: hosted
-    version: "0.9.1"
-  dotenv:
-    dependency: "direct main"
-    description:
-      name: dotenv
-      sha256: "379e64b6fc82d3df29461d349a1796ecd2c436c480d4653f3af6872eccbc90e1"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.2.0"
+    version: "0.9.2"
   dotprompt_dart:
     dependency: transitive
     description:
