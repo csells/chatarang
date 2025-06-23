@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:chatarang/commands.dart';
 import 'package:chatarang/env.dart';
 import 'package:chatarang/history.dart';
-import 'package:chatarang/tools.dart';
 import 'package:cli_repl/cli_repl.dart';
 import 'package:dartantic_ai/dartantic_ai.dart';
 
@@ -33,13 +32,16 @@ chatarang is now running.
 Everything else you type will be sent to the current model.
 ''';
 
-  print(help);
-  print(
-    'Found ${models.length} models from ${providerNames.length} providers.',
+  // Print initial information before starting REPL
+  stdout.write(help);
+  stdout.write('\n');
+  stdout.write(
+    'Found ${models.length} models from ${providerNames.length} providers.\n',
   );
+  await stdout.flush();
 
   final commandHandler = CommandHandler(
-    agent: Agent(defaultModel, tools: tools),
+    defaultModel: defaultModel,
     history: [],
     models: models,
     help: help,
@@ -61,9 +63,11 @@ Everything else you type will be sent to the current model.
     );
 
     stdout.write('\x1B[93m${commandHandler.agent.model}\x1B[0m: ');
+    await stdout.flush();
     var finalMessages = <Message>[];
     await for (final response in stream) {
       stdout.write(response.output);
+      await stdout.flush();
       finalMessages = response.messages;
     }
 
@@ -80,7 +84,8 @@ Everything else you type will be sent to the current model.
       );
     }
 
-    print('');
+    stdout.write('\n\n');
+    await stdout.flush();
   }
 
   exit(0);

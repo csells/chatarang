@@ -15,11 +15,11 @@ class HandleCommandResult {
 
 class CommandHandler {
   CommandHandler({
-    required this.agent,
+    required String defaultModel,
     required this.history,
     required this.models,
     required this.help,
-  });
+  }) : agent = _createAgent(defaultModel);
 
   Agent agent;
   List<HistoryEntry> history;
@@ -27,6 +27,39 @@ class CommandHandler {
   final String help;
 
   List<Message> get messages => history.map((e) => e.message).toList();
+
+  static Agent _createAgent(String model) {
+    final toolDescriptions = StringBuffer();
+    for (final tool in tools) {
+      toolDescriptions.write('Tool: ${tool.name}\n');
+      toolDescriptions.write('- Description: ${tool.description}\n');
+      toolDescriptions.write('- Input schema: ${tool.inputSchema ?? '{}'}\n');
+      toolDescriptions.write('\n');
+    }
+
+    final systemPrompt =
+        '''
+You are a helpful AI assistant with access to tools that can help you provide better responses. 
+
+IMPORTANT: Before asking the user for additional information, always consider if you can use your available tools to gather the information yourself. Carefully review each tool to see if it can help with the user's request.
+
+Available tools:
+
+$toolDescriptions
+
+When responding:
+1. First, carefully consider each available tool by name, description, and input schema
+2. If any tool can help answer the user's question or request, use it
+3. Only ask the user for additional information if none of your tools can provide what's needed
+4. Be proactive in using tools to provide comprehensive and helpful responses
+''';
+
+    return Agent(model, tools: tools, systemPrompt: systemPrompt);
+  }
+
+  void _setModel(String newModel) {
+    agent = _createAgent(newModel);
+  }
 
   HandleCommandResult handleCommand({required String line}) {
     if (!line.startsWith('/')) {
@@ -128,7 +161,7 @@ class CommandHandler {
           final newModel = args.join(':');
           if (models.contains(newModel)) {
             try {
-              agent = Agent(newModel, tools: tools);
+              _setModel(newModel);
               print('Model set to: $newModel');
             } on Exception catch (ex) {
               print('Error setting model: $ex');
