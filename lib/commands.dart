@@ -154,6 +154,11 @@ When responding:
         }
         return HandleCommandResult();
 
+      case '/clear':
+        history.clear();
+        print("You're chatting with ${agent.model}");
+        return HandleCommandResult();
+
       case '/model':
         if (args.isEmpty) {
           print('Current model: ${agent.model}');
